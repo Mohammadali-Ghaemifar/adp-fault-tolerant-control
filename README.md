@@ -8,42 +8,59 @@ The supplied example is a two-state demonstration system. The nominal policy is 
 
 The plant and measurement models are
 
-$$
-\dot{x}=Ax+Bu+g(x)+D_a f_a,\qquad y=Cx+D_s f_s.
-$$
+```math
+\dot{x}=Ax+Bu+g(x)+D_a f_a
+```
 
-The implementation proceeds as follows:
+```math
+y=Cx+D_s f_s
+```
 
-1. **Decouple the sensor-fault channel.** Form the virtual output $y_0=N_s y=C_0x$, where $N_sD_s=0$ and $C_0=N_sC$.
-2. **Estimate states and actuator faults.** Use an adaptive observer with innovation $r=y_0-C_0\hat{x}$:
+### 1. Sensor-fault decoupling
 
-   $$
-   \dot{\hat{x}}=A\hat{x}+Bu+g(\hat{x})+D_a\hat{f}_a+Lr,
-   \qquad
-   \dot{\hat{f}}_a=-\delta\Gamma\hat{f}_a+\Gamma Kr.
-   $$
+Form the virtual output $`y_0=N_s y=C_0x`$, where $`N_sD_s=0`$ and $`C_0=N_sC`$.
 
-   Observer design enforces a Lipschitz-based linear matrix inequality (LMI) together with $KC_0=D_a^TP$. The resulting matrices undergo numerical feasibility checks.
-3. **Train the nominal controller offline.** Approximate the value function as $\hat{V}(x)=W^T\sigma(x)$ and derive a candidate policy from its gradient:
+### 2. State and actuator-fault estimation
 
-   $$
-   \mu_{\mathrm{cand}}(x)=-\tfrac12 R^{-1}B^T\nabla\hat{V}(x).
-   $$
+Use the adaptive observer with innovation $`r=y_0-C_0\hat{x}`$:
 
-   Training uses eight normalized quadratic and quartic monomials on a $17\times17$ state grid, excluding the origin: 288 collocation points. Each iteration solves an unregularized least-squares Bellman regression and records its rank, singular values, condition number, and residual. Candidate policies are screened using a quadratic Lyapunov function on the design grid. If necessary, the candidate is blended with the previous policy; if no tested blend passes, the previous policy is retained.
-4. **Apply actuator-fault compensation.** Evaluate the final accepted policy at the estimated state:
+```math
+\dot{\hat{x}}=A\hat{x}+Bu+g(\hat{x})+D_a\hat{f}_a+Lr
+```
 
-   $$
-   u=\mu_N(\hat{x})-B^\dagger D_a\hat{f}_a.
-   $$
+```math
+\dot{\hat{f}}_a=-\delta\Gamma\hat{f}_a+\Gamma Kr
+```
 
-5. **Reconstruct the sensor fault.** Compute
+Observer design enforces a Lipschitz-based linear matrix inequality (LMI) together with $`KC_0=D_a^TP`$. The resulting matrices undergo numerical feasibility checks.
 
-   $$
-   \hat{f}_s=D_s^\dagger(y-C\hat{x}).
-   $$
+### 3. Offline nominal-controller training
 
-   This reconstruction supports monitoring. Sensor-fault decoupling in the feedback path is provided by the virtual output.
+Approximate the value function as $`\hat{V}(x)=W^T\sigma(x)`$ and derive a candidate policy from its gradient:
+
+```math
+\mu_{\mathrm{cand}}(x)=-\frac{1}{2}R^{-1}B^T\nabla\hat{V}(x)
+```
+
+Training uses eight normalized quadratic and quartic monomials on a $`17\times17`$ state grid, excluding the origin: 288 collocation points. Each iteration solves an unregularized least-squares Bellman regression and records its rank, singular values, condition number, and residual. Candidate policies are screened using a quadratic Lyapunov function on the design grid. If necessary, the candidate is blended with the previous policy; if no tested blend passes, the previous policy is retained.
+
+### 4. Actuator-fault compensation
+
+Evaluate the final accepted policy at the estimated state:
+
+```math
+u=\mu_N(\hat{x})-B^\dagger D_a\hat{f}_a
+```
+
+### 5. Sensor-fault reconstruction
+
+Compute
+
+```math
+\hat{f}_s=D_s^\dagger(y-C\hat{x})
+```
+
+This reconstruction supports monitoring. Sensor-fault decoupling in the feedback path is provided by the virtual output.
 
 The critic weights remain fixed during simulation. Online adaptation is confined to the observer's actuator-fault estimate.
 
@@ -59,17 +76,17 @@ Ns = [1 0 0; 0 1 0];
 g  = @(x) [0; 0.25*sin(x(1))];
 ```
 
-There are two states, one control input, three measured outputs, and one fault channel each for the actuator and sensor. The actuator fault is matched to the input channel: $D_a=B$. The sensor fault affects only the third output.
+There are two states, one control input, three measured outputs, and one fault channel each for the actuator and sensor. The actuator fault is matched to the input channel: $`D_a=B`$. The sensor fault affects only the third output.
 
-For this example, $C_0=I_2$ and $y_0=x$: both states are directly available through the two healthy outputs. The example evaluates the estimation and compensation architecture under this favorable measurement arrangement.
+For this example, $`C_0=I_2`$ and $`y_0=x`$: both states are directly available through the two healthy outputs. The example evaluates the estimation and compensation architecture under this favorable measurement arrangement.
 
 | Setting | Default |
 | --- | --- |
-| Design domain | $[-2,2]\times[-2,2]$ |
-| State and input cost weights | $Q_c=\operatorname{diag}(4,1)$, $R=0.5$ |
-| Initial nominal policy | $\mu_0(x)=-[1.6\;1.2]x$ |
-| Observer adaptation and leakage | $\Gamma=3$, $\delta=0.25$ |
-| Initial conditions | $x(0)=[1.2;-0.7]$, $\hat{x}(0)=[0;0]$, $\hat{f}_a(0)=0$ |
+| Design domain | $`[-2,2]\times[-2,2]`$ |
+| State and input cost weights | `Qc = diag([4 1])`, `R = 0.5` |
+| Initial nominal policy | `mu_0(x) = -[1.6 1.2] * x` |
+| Observer adaptation and leakage | $`\Gamma=3`$, $`\delta=0.25`$ |
+| Initial conditions | `x0 = [1.2; -0.7]`, `xhat0 = [0; 0]`, `fahat0 = 0` |
 | Simulation interval | 0 to 25 s |
 | Recorded output spacing | 0.01 s |
 | Integration | `ode45`, maximum step 0.02 s |
@@ -81,17 +98,20 @@ For this example, $C_0=I_2$ and $y_0=x$: both states are directly available thro
 
 - **MATLAB:** the project report specifies R2024a. Compatibility with earlier releases has not been established.
 - **Optional LMI-design dependencies:** YALMIP and a compatible semidefinite programming solver. The report uses SDPT3. The code explicitly selects SDPT3 when `sqlp` is available; otherwise it uses YALMIP's automatic solver selection. These packages are external and are not included in the supplied source set.
-- **Analytical observer fallback:** when YALMIP is unavailable or its solve fails, the supplied example can use an analytical design. It uses $P=I$, $\rho=1$, and $L=A+2I$, followed by the same numerical feasibility checks. This construction is specific to the demonstration arrangement with $C_0=I_2$; it requires redesign for another plant.
+- **Analytical observer fallback:** when YALMIP is unavailable or its solve fails, the supplied example can use an analytical design. It uses $`P=I`$, $`\rho=1`$, and $`L=A+2I`$, followed by the same numerical feasibility checks. This construction is specific to the demonstration arrangement with $`C_0=I_2`$; it requires redesign for another plant.
 
 All 13 project MATLAB files are present. The workflow requires no external dataset, pretrained weights, or Simulink model. No calls to Control System Toolbox or Deep Learning Toolbox functions appear in the supplied implementation; the Lyapunov equation is solved directly using a Kronecker formulation.
 
 ## Quick start
 
-Place all 13 `.m` files in the same directory, make that directory the MATLAB Current Folder, and run:
+Download or clone this repository. From the repository root in MATLAB, enter the source folder and run:
 
 ```matlab
+cd('Matlab Code')
 main_chapter4
 ```
+
+All 13 `.m` files are in `Matlab Code/`. Keep that folder as the MATLAB Current Folder for the interactive examples below. The [project summary](Project_Summary.pdf) presents the methodology and numerical results.
 
 The entry point checks structural assumptions, designs the observer, trains the nominal policy, runs all four fault scenarios, and generates comparison plots for scenarios 2 and 4. Inspect the structural-check table and observer diagnostics before interpreting the results. Structural-check failures produce a warning; they do not automatically stop the main workflow.
 
@@ -122,10 +142,13 @@ plot_chapter4_results(result, p);
 
 The default actuator profile is
 
-$$
-f_a(t)=[1+0.10\sin(0.8(t-5))]\,[s(t-5)-s(t-17)],
-\qquad s(\tau)=\tfrac12[1+\tanh(3\tau)].
-$$
+```math
+f_a(t)=\left[1+0.10\sin\left(0.8(t-5)\right)\right]\left[s(t-5)-s(t-17)\right]
+```
+
+```math
+s(\tau)=\frac{1}{2}\left[1+\tanh(3\tau)\right]
+```
 
 The times 5 s and 17 s are transition centers; the smooth profile has small tails outside that interval. The sensor bias is zero before 8 s, 0.45 from 8 s to 16 s, and 0.20 thereafter through the end of the simulation.
 
@@ -133,9 +156,9 @@ The times 5 s and 17 s are transition centers; the smooth profile has small tail
 
 | Mode | Nominal feedback | Actuator-fault compensation |
 | --- | --- | --- |
-| `proposed` | Learned policy evaluated at $\hat{x}$ | Estimated fault |
-| `no_compensation` | Same learned policy evaluated at $\hat{x}$ | Disabled |
-| `ideal` | Same learned policy evaluated at the true state $x$ | Exact fault |
+| `proposed` | Learned policy evaluated at $`\hat{x}`$ | Estimated fault |
+| `no_compensation` | Same learned policy evaluated at $`\hat{x}`$ | Disabled |
+| `ideal` | Same learned policy evaluated at the true state $`x`$ | Exact fault |
 
 The uncompensated baseline retains the adaptive observer. The ideal-information mode provides a reference with exact state and fault information; its nominal policy is still the learned ADP policy.
 
@@ -154,7 +177,9 @@ The default amplitudes are `[0 0.4 0.7 1.0 1.3]`. The observer and policy are de
 
 ## Outputs
 
-`main_chapter4` writes to `results/` beside the source files:
+`main_chapter4` writes to `results/` beside the source files. In this repository, new runs therefore write to `Matlab Code/results/`; the top-level `results/` directory contains the uploaded result archives.
+
+The generated outputs are:
 
 - `chapter4_metrics.csv`: four rows of metrics for the `proposed` mode.
 - `chapter4_results.mat`: parameters, structural checks, observer design, ADP policy and history, proposed trajectories, comparison trajectories, and the summary table.
@@ -164,13 +189,13 @@ The default amplitudes are `[0 0.4 0.7 1.0 1.3]`. The observer and policy are de
 
 The main run generates 19 PNG files. Figures are exported at 300 dpi. Comparison trajectories are saved in the MAT file; the main CSV contains only the proposed-mode metrics.
 
-The sweep writes scenario-specific PNG, CSV, and MAT files under `results/amplitude_sweep/`. Repeated runs overwrite matching output filenames.
+The sweep writes scenario-specific PNG, CSV, and MAT files under `Matlab Code/results/amplitude_sweep/`. Repeated runs overwrite matching output filenames.
 
 Metrics include state-estimation RMSE, actuator- and sensor-fault RMSE, state ISE, control energy, peak norms, settling time, and
 
-$$
-J_T=\int_0^T(x^TQ_cx+u^TRu)\,dt.
-$$
+```math
+J_T=\int_0^T\left(x^TQ_cx+u^TRu\right)\,\mathrm{d}t
+```
 
 `J_T` uses the total applied control, including compensation. Fault RMSE uses samples where the true fault norm exceeds `1e-5`, or the full trajectory when no such samples exist. Settling time is an absolute simulation time after the scenario's designated last event, using a state-norm threshold of 0.05; it is not elapsed time since that event.
 
@@ -208,14 +233,16 @@ The following qualifications apply:
 
 ### Reported results and saved artifacts
 
-The report, existing saved results, and current source should be distinguished when quoting numerical performance. For the proposed actuator-fault case at nominal amplitude 1:
+The stored parameter snapshots distinguish the main experiment from the other archives:
 
-| Source | State ISE | Finite-horizon cost $J_T$ |
-| --- | --- | --- |
-| Report, Table 4-5 | 2.3434 | 9.9271 |
-| Existing `results/chapter4_metrics.csv`, scenario 2 | 2.9032 | 13.4041 |
-| Existing amplitude-sweep CSV, amplitude 1 | 2.3703 | 10.0633 |
+| Configuration | Actuator amplitude | Ripple amplitude | Proposed state ISE | Proposed cost `J_T` |
+| --- | --- | --- | --- | --- |
+| `results/1/`, matching the main comparison in the report | 1.0 | 0.10 | 2.3434 | 9.9271 |
+| Top-level `results/` archive | 1.3 | 0.10 | 2.9032 | 13.4041 |
+| Saved amplitude sweep at amplitude 1.0 | 1.0 | 0.142857 | 2.3703 | 10.0633 |
 
-These artifacts do not provide one consistent numerical reference. The sweep/main profile difference above is explicit in the source; it does not by itself explain every discrepancy. Observer gains also depend on whether the solver or analytical fallback is used. Record the actual parameters, solver information, and generated outputs for each run before reporting improvements. Compensation can improve regulation while increasing control effort, and it can increase total cost in the fault-free case.
+The top-level archive was generated with actuator amplitude 1.3; the current source defaults to 1.0. Its values therefore should not be labeled as an amplitude-1 experiment. The sweep/main ripple difference is described above. The report's numerical sweep table also differs slightly from the supplied sweep CSV; use the specific archive and its parameters when quoting results.
 
-No required project source file is missing. External solver packages, a fully specified solver environment, and an implemented numerical calculation of the theoretical ultimate bound are not supplied. No license file is included in the supplied project directory.
+Observer gains depend on whether the solver or analytical fallback is used. Record the actual parameters, solver information, and generated outputs for each run before reporting improvements. Compensation can improve regulation while increasing control effort, and it can increase total cost in the fault-free case.
+
+No required project source file is missing. External solver packages, a fully specified solver environment, and an implemented numerical calculation of the theoretical ultimate bound are not supplied. No license file is included in this repository.
