@@ -245,4 +245,4 @@ The top-level archive was generated with actuator amplitude 1.3; the current sou
 
 Observer gains depend on whether the solver or analytical fallback is used. Record the actual parameters, solver information, and generated outputs for each run before reporting improvements. Compensation can improve regulation while increasing control effort, and it can increase total cost in the fault-free case.
 
-No required project source file is missing. External solver packages, a fully specified solver environment, and an implemented numerical calculation of the theoretical ultimate bound are not supplied. No license file is included in this repository.
+No required project source file is missing. External solver packages, a fully specified solver environment, and an implemented numerical calculation of the theoretical ultimate bound are not supplied.
